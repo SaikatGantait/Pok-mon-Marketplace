@@ -64,6 +64,13 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
 
   const connectViaSolana = async () => {
     setShowSelectModal(false)
+    // If Phantom isn't detected, help the user install it, then still show the modal
+    const hasPhantom = typeof window !== 'undefined' && (window as any).solana?.isPhantom
+    if (!hasPhantom) {
+      try {
+        window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer')
+      } catch {}
+    }
     // For adapter-react 0.9, use the UI modal to pick Phantom
     setSolanaModalVisible(true)
   }
