@@ -7,6 +7,8 @@ export interface PokemonCardType {
   type: 'fire' | 'water' | 'electric' | 'grass' | 'psychic' | 'fighting'
   chain: 'Solana' | 'Aptos' | 'Algorand'
   seller: string
+  imageUrl?: string
+  metadataUrl?: string
   hp: number
   attack: number
   defense: number
