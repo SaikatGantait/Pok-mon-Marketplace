@@ -64,13 +64,8 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
 
   const connectViaSolana = async () => {
     setShowSelectModal(false)
-    try {
-      await connectSolana()
-      setShowDropdown(true)
-    } catch (e) {
-      // Fallback to UI modal if direct connect fails (no wallet selected)
-      setSolanaModalVisible(true)
-    }
+    // For adapter-react 0.9, use the UI modal to pick Phantom
+    setSolanaModalVisible(true)
   }
 
   const connectViaAlgorand = async () => {

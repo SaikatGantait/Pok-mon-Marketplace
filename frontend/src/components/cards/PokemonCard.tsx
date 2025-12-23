@@ -3,6 +3,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { parsePrice, buyOnSolana, buyOnAptos } from '@/utils/buy'
 import { useAptosWallet } from '@/components/providers/AptosWalletProvider'
 import { useAlgorandWallet } from '@/components/providers/AlgorandWalletProvider'
+import { API_URL } from '@/utils/api'
 
 export default function PokemonCard({ card }: { card: PokemonCardType }) {
   const wallet = useWallet()
@@ -15,16 +16,19 @@ export default function PokemonCard({ card }: { card: PokemonCardType }) {
     try {
       if (card.chain === 'Solana' && symbol === 'SOL') {
         const sig = await buyOnSolana({ wallet, connection, seller: card.seller, amountSol: amount })
+        await fetch(`${API_URL}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: card.id, chain: 'Solana', txId: sig }) })
         alert(`Purchased on Solana Devnet. Tx: ${sig}`)
         return
       }
       if (card.chain === 'Aptos' && symbol === 'APT' && aptosConnected) {
         const hash = await buyOnAptos({ seller: card.seller, amountApt: amount })
+        await fetch(`${API_URL}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: card.id, chain: 'Aptos', txId: hash }) })
         alert(`Purchased on Aptos Testnet. Tx: ${hash}`)
         return
       }
       if (card.chain === 'Algorand' && symbol === 'ALGO' && algoConnected) {
         const txId = await sendPayment(card.seller, amount)
+        await fetch(`${API_URL}/api/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: card.id, chain: 'Algorand', txId }) })
         alert(`Purchased on Algorand TestNet. Tx: ${txId}`)
         return
       }
@@ -35,6 +39,11 @@ export default function PokemonCard({ card }: { card: PokemonCardType }) {
   }
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-shadow">
+      {card.imageUrl && (
+        <div className="h-40 w-full bg-gray-100 overflow-hidden">
+          <img src={card.imageUrl} alt={card.name} className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">{card.rarity}</span>

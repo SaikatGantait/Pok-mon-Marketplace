@@ -8,6 +8,7 @@ import { useAptosWallet } from '@/components/providers/AptosWalletProvider'
 import { useAlgorandWallet } from '@/components/providers/AlgorandWalletProvider'
 import { addListing } from '@/utils/listings'
 import { API_URL } from '@/utils/api'
+import { uploadImageAndMetadata } from '@/utils/ipfs'
 import { useRouter } from 'next/navigation'
 
 export default function SellPage() {
@@ -42,6 +43,23 @@ export default function SellPage() {
     }
 
     const id = Date.now().toString()
+    let imageUrl: string | undefined
+    let metadataUrl: string | undefined
+
+    if (formData.image) {
+      try {
+        const meta = {
+          name: formData.name,
+          description: formData.description,
+          attributes: [{ trait_type: 'rarity', value: formData.rarity }, { trait_type: 'type', value: formData.type }],
+        }
+        const out = await uploadImageAndMetadata(formData.image, meta)
+        imageUrl = out.imageUrl
+        metadataUrl = out.metadataUrl
+      } catch (e) {
+        console.warn('IPFS upload failed, continuing without media', e)
+      }
+    }
     const newItem = {
       id,
       name: formData.name || 'Custom Card',
@@ -51,6 +69,8 @@ export default function SellPage() {
       type: formData.type as any,
       chain: formData.chain as any,
       seller,
+      imageUrl,
+      metadataUrl,
       hp: Number(formData.hp || 100),
       attack: Number(formData.attack || 100),
       defense: Number(formData.defense || 100),
