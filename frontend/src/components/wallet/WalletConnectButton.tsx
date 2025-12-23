@@ -14,7 +14,14 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
   const [copied, setCopied] = useState(false)
   const [showSelectModal, setShowSelectModal] = useState(false)
   
-  const { connect: connectSolana, disconnect: disconnectSolana, connected: solanaConnected, publicKey: solanaPublicKey } = useWallet()
+  const {
+    connect: connectSolana,
+    disconnect: disconnectSolana,
+    connected: solanaConnected,
+    publicKey: solanaPublicKey,
+    wallets: solanaWallets,
+    select: selectSolanaWallet,
+  } = useWallet()
   const { connection } = useConnection()
   const { connect: connectAlgorand, disconnect: disconnectAlgorand, isConnected: algorandConnected, address: algorandAddress } = useAlgorandWallet()
   const { setVisible: setSolanaModalVisible } = useWalletModal()
@@ -64,14 +71,24 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
 
   const connectViaSolana = async () => {
     setShowSelectModal(false)
+    // Try direct connect to Phantom if adapter exists
+    const phantom = solanaWallets.find(w => w.adapter.name?.toLowerCase() === 'phantom')
+    if (phantom) {
+      try {
+        await selectSolanaWallet(phantom.adapter.name)
+        await connectSolana()
+        setShowDropdown(true)
+        return
+      } catch (e) {
+        // fall through to modal on failure/cancel
+      }
+    }
     // If Phantom isn't detected, help the user install it, then still show the modal
     const hasPhantom = typeof window !== 'undefined' && (window as any).solana?.isPhantom
     if (!hasPhantom) {
-      try {
-        window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer')
-      } catch {}
+      try { window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer') } catch {}
     }
-    // For adapter-react 0.9, use the UI modal to pick Phantom
+    // Fallback to the adapter UI modal
     setSolanaModalVisible(true)
   }
 
