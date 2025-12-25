@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { Upload, Image as ImageIcon, DollarSign, Hash, Type, FileText } from 'lucide-react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useAptosWallet } from '@/components/providers/AptosWalletProvider'
-import { useAlgorandWallet } from '@/components/providers/AlgorandWalletProvider'
+import { useEvmWallet } from '@/components/providers/EvmWalletProvider'
 import { addListing } from '@/utils/listings'
 import { API_URL } from '@/utils/api'
 import { uploadImageAndMetadata } from '@/utils/ipfs'
@@ -15,7 +15,8 @@ export default function SellPage() {
   const router = useRouter()
   const { publicKey } = useWallet()
   const { isConnected: aptosConnected, address: aptosAddress } = useAptosWallet()
-  const { isConnected: algoConnected, address: algoAddress } = useAlgorandWallet()
+  const { isConnected: evmConnected, address: evmAddress } = useEvmWallet()
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -35,7 +36,7 @@ export default function SellPage() {
     let seller: string | null = null
     if (formData.chain === 'Solana' && publicKey) seller = publicKey.toBase58()
     if (formData.chain === 'Aptos' && aptosConnected && aptosAddress) seller = aptosAddress
-    if (formData.chain === 'Algorand' && algoConnected && algoAddress) seller = algoAddress
+    if ((formData.chain === 'EVM' || formData.chain === 'Ethereum') && evmConnected && evmAddress) seller = evmAddress
 
     if (!seller) {
       alert(`Please connect your ${formData.chain} wallet before listing.`)
@@ -64,7 +65,7 @@ export default function SellPage() {
       id,
       name: formData.name || 'Custom Card',
       description: formData.description,
-      price: `${formData.price} ${formData.chain === 'Solana' ? 'SOL' : formData.chain === 'Aptos' ? 'APT' : 'ALGO'}`,
+      price: `${formData.price} ${formData.chain === 'Solana' ? 'SOL' : formData.chain === 'Aptos' ? 'APT' : 'ETH'}`,
       rarity: formData.rarity as any,
       type: formData.type as any,
       chain: formData.chain as any,
@@ -225,7 +226,7 @@ export default function SellPage() {
               >
                 <option value="Solana">Solana</option>
                 <option value="Aptos">Aptos</option>
-                <option value="Algorand">Algorand</option>
+                <option value="EVM">EVM (Sepolia)</option>
               </select>
             </div>
           </div>

@@ -1,0 +1,15 @@
+[features]
+seeds = true
+
+[programs.localnet]
+pokemon_marketplace = "PoKEoNMarketPlace1111111111111111111111111111"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "node tests/run.js"

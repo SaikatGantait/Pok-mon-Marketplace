@@ -5,6 +5,7 @@ import { ReactNode, useState } from 'react'
 import { WalletProvider } from './WalletProvider'
 import { ThemeProvider } from './ThemeProvider'
 import { AptosWalletProvider } from './AptosWalletProvider'
+import { EvmWalletProvider } from './EvmWalletProvider'
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -20,9 +21,11 @@ export default function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <WalletProvider>
         <AptosWalletProvider>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
+          <EvmWalletProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </EvmWalletProvider>
         </AptosWalletProvider>
       </WalletProvider>
     </QueryClientProvider>

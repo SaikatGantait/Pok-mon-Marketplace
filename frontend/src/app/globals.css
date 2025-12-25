@@ -7,6 +7,10 @@ body {
   @apply text-gray-900 bg-white;
 }
 
+/* Default to normal cursor; explicitly opt-in to pointer where needed */
+* { cursor: default; }
+button:not(:disabled), a[href], [role="button"], .btn-primary, .cursor-pointer { cursor: pointer; }
+
 .btn-primary {
   @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-colors;
 }

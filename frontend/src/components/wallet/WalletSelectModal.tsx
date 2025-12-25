@@ -2,13 +2,14 @@ type Props = {
   open: boolean
   onClose: () => void
   onConnectSolana: () => void
-  onConnectAlgorand: () => void
   onConnectAptos: () => void
+  onConnectEvm?: () => void
 }
 
 import { useEffect, useRef } from 'react'
+import Portal from '@/components/layout/Portal'
 
-export default function WalletSelectModal({ open, onClose, onConnectSolana, onConnectAlgorand, onConnectAptos }: Props) {
+export default function WalletSelectModal({ open, onClose, onConnectSolana, onConnectAptos, onConnectEvm }: Props) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (open && panelRef.current) {
@@ -24,10 +25,16 @@ export default function WalletSelectModal({ open, onClose, onConnectSolana, onCo
   if (!open) return null
 
   return (
-    <>
+    <Portal>
       <div className="fixed inset-0 z-[10001] bg-black/40" onClick={onClose} />
+      {/* Centered container rendered via portal to avoid ancestor transforms */}
       <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4">
-        <div ref={panelRef} className="w-full max-w-md my-6 rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          className="w-[min(100%_-_2rem,32rem)] max-w-md max-h-[90vh] rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden flex flex-col"
+        >
           <div className="px-6 py-4 border-b sticky top-0 bg-white/95 backdrop-blur z-10 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">Connect your wallet</h3>
@@ -55,29 +62,10 @@ export default function WalletSelectModal({ open, onClose, onConnectSolana, onCo
                 </div>
                 <div className="text-left">
                   <div className="font-medium">Solana</div>
-                  <div className="text-xs text-gray-500">Phantom (Devnet)</div>
+                  <div className="text-xs text-gray-500">Phantom (Testnet)</div>
                 </div>
               </div>
               <span className="text-sm text-purple-600 font-medium">Connect</span>
-            </button>
-
-            <button
-              onClick={onConnectAlgorand}
-              className="w-full flex items-center justify-between border rounded-xl p-4 hover:bg-gray-50 transition-colors transition-transform hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-600/10 flex items-center justify-center">
-                  {/* Algorand glyph (A) */}
-                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="#16a34a" d="M14 3l-4 10h2l1-3h2l-1 3h2l4-10h-2l-1 3h-2l1-3z"/>
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <div className="font-medium">Algorand</div>
-                  <div className="text-xs text-gray-500">Pera (TestNet)</div>
-                </div>
-              </div>
-              <span className="text-sm text-green-600 font-medium">Connect</span>
             </button>
 
             <button
@@ -100,11 +88,29 @@ export default function WalletSelectModal({ open, onClose, onConnectSolana, onCo
               <span className="text-sm text-orange-600 font-medium">Connect</span>
             </button>
 
-            {/* Placeholder for future chains */}
-            <div className="text-xs text-gray-500 pt-2">More wallets coming soon</div>
+            <button
+              onClick={onConnectEvm}
+              className="w-full flex items-center justify-between border rounded-xl p-4 hover:bg-gray-50 transition-colors transition-transform hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-700/10 flex items-center justify-center">
+                  {/* MetaMask glyph */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
+                    <path fill="#f6851b" d="M3 3l7 5-2 3-5-2zM21 3l-7 5 2 3 5-2zM12 13l-3 2 3 6 3-6z"/>
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">EVM</div>
+                  <div className="text-xs text-gray-500">MetaMask (Sepolia)</div>
+                </div>
+              </div>
+              <span className="text-sm text-gray-700 font-medium">Connect</span>
+            </button>
+
+            <div className="text-xs text-gray-500 pt-2">Testnets only — no real funds</div>
           </div>
         </div>
       </div>
-    </>
+    </Portal>
   )
 }

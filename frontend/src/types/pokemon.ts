@@ -5,7 +5,7 @@ export interface PokemonCardType {
   price: string
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Legendary'
   type: 'fire' | 'water' | 'electric' | 'grass' | 'psychic' | 'fighting'
-  chain: 'Solana' | 'Aptos' | 'Algorand'
+  chain: 'Solana' | 'Aptos' | 'EVM'
   seller: string
   imageUrl?: string
   metadataUrl?: string
