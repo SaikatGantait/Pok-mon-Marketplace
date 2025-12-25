@@ -1,0 +1,10 @@
+[workspace]
+members = [
+  "programs/pokemon_marketplace"
+]
+
+[profile.release]
+overflow-checks = true
+codegen-units = 1
+lto = "fat"
+opt-level = "s"

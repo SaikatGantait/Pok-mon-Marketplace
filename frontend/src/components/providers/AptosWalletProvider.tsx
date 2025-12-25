@@ -19,7 +19,16 @@ declare global {
       account: () => Promise<{ address: string }>
       disconnect: () => Promise<void>
       isConnected: () => Promise<boolean>
-        signAndSubmitTransaction?: (tx: any) => Promise<{ hash: string }>
+      on?: (event: string, handler: (...args: any[]) => void) => void
+      signAndSubmitTransaction?: (tx: any) => Promise<{ hash: string }>
+    }
+    petra?: {
+      connect: (opts?: any) => Promise<{ address: string }>
+      account: () => Promise<{ address: string }>
+      disconnect: () => Promise<void>
+      isConnected?: () => Promise<boolean>
+      on?: (event: string, handler: (...args: any[]) => void) => void
+      signAndSubmitTransaction?: (tx: any) => Promise<{ hash: string }>
     }
   }
 }
@@ -43,35 +52,55 @@ export function AptosWalletProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Do not auto-connect Petra on page load; connect only on user action
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
-        if (window.aptos) {
-          const connected = await window.aptos.isConnected()
+        // Prefer Petra if multiple Aptos wallets are installed
+        const provider: any = (window as any).petra || (window as any).aptos
+        // attach listeners if available
+        provider?.on?.('accountChange', async () => {
           if (!mounted) return
-          if (connected) {
-            const acc = await window.aptos.account()
+          try {
+            const acc = await provider.account()
+            setIsConnected(true)
+            setAddress(acc.address)
+            fetchBalance(acc.address)
+          } catch {
+            setIsConnected(false)
+            setAddress(null)
+          }
+        })
+        provider?.on?.('networkChange', () => {
+          // balance may change by network; refresh if connected
+          if (address) fetchBalance(address)
+        })
+        // Sync initial connection state if the wallet already approved this site
+        try {
+          const already = await provider?.isConnected?.()
+          if (already) {
+            const acc = await provider.account()
             if (!mounted) return
             setIsConnected(true)
             setAddress(acc.address)
             fetchBalance(acc.address)
           }
-        }
+        } catch {}
       } catch {}
     })()
-    return () => {
-      mounted = false
-    }
+    return () => { mounted = false }
   }, [])
 
   const connect = async () => {
-    if (!window.aptos) {
+    // Prefer Petra if present
+    const provider: any = (window as any).petra || (window as any).aptos
+    if (!provider) {
       alert('Please install the Petra Wallet extension to connect on Aptos testnet.')
       return
     }
     try {
-      const acc = await window.aptos.connect({})
+      const acc = await provider.connect({})
       setIsConnected(true)
       setAddress(acc.address)
       fetchBalance(acc.address)
@@ -82,7 +111,8 @@ export function AptosWalletProvider({ children }: { children: ReactNode }) {
 
   const disconnect = async () => {
     try {
-      if (window.aptos) await window.aptos.disconnect()
+      const provider: any = (window as any).petra || (window as any).aptos
+      if (provider?.disconnect) await provider.disconnect()
     } finally {
       setIsConnected(false)
       setAddress(null)

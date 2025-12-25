@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Filter, Flame, Droplets, Zap, Leaf } from 'lucide-react'
 import PokemonCard from '@/components/cards/PokemonCard'
-import { mockPokemonCards } from '@/data/mockData'
+import { demoPokemonCards } from '@/data/demoData'
 import { loadListings } from '@/utils/listings'
 import { API_URL } from '@/utils/api'
 
@@ -16,11 +16,11 @@ const types = [
   { id: 'grass', label: 'Grass', icon: <Leaf className="w-4 h-4" />, color: 'text-green-500' },
 ]
 
-const chains = ['All', 'Solana', 'Aptos', 'Algorand']
+const chains = ['All', 'Solana', 'Aptos', 'EVM']
 const rarities = ['All', 'Common', 'Uncommon', 'Rare', 'Legendary']
 
 export default function HomePage() {
-  const [userListings, setUserListings] = useState(mockPokemonCards)
+  const [userListings, setUserListings] = useState([] as any[])
   useEffect(() => {
     let active = true
     async function load() {
@@ -29,11 +29,11 @@ export default function HomePage() {
         const apiItems = res.ok ? await res.json() : []
         const local = loadListings()
         if (!active) return
-        setUserListings([...(apiItems || []), ...local, ...mockPokemonCards])
+        setUserListings([...(apiItems || []), ...local, ...demoPokemonCards])
       } catch {
         const local = loadListings()
         if (!active) return
-        setUserListings([...local, ...mockPokemonCards])
+        setUserListings([...local, ...demoPokemonCards])
       }
     }
     load()

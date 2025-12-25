@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { Wallet, ChevronDown, LogOut, Copy, Check } from 'lucide-react'
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import type { WalletName } from '@solana/wallet-adapter-base'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { useAlgorandWallet } from '@/components/providers/AlgorandWalletProvider'
-import { useWalletModal } from '@solana/wallet-adapter-react-ui'
+// Removed wallet modal usage to avoid showing the adapter UI
 import WalletSelectModal from './WalletSelectModal'
-import { useAptosWallet } from '@/components/providers/AptosWalletProvider'
+import { useAptosWallet } from '../providers/AptosWalletProvider'
+import { useEvmWallet } from '../providers/EvmWalletProvider'
 
 export default function WalletConnectButton({ mobile = false }: { mobile?: boolean }) {
   const [showDropdown, setShowDropdown] = useState(false)
@@ -23,16 +24,14 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
     select: selectSolanaWallet,
   } = useWallet()
   const { connection } = useConnection()
-  const { connect: connectAlgorand, disconnect: disconnectAlgorand, isConnected: algorandConnected, address: algorandAddress } = useAlgorandWallet()
-  const { setVisible: setSolanaModalVisible } = useWalletModal()
-  const { connect: connectAptos, disconnect: disconnectAptos, isConnected: aptosConnected, address: aptosAddress, balance: aptosBalance } = useAptosWallet()
+  const { connect: connectAptos, disconnect: disconnectAptos, isConnected: aptosConnected, address: aptosAddress } = useAptosWallet()
+  const { connect: connectEvm, disconnect: disconnectEvm, isConnected: evmConnected, address: evmAddress } = useEvmWallet()
 
-  const isAnyWalletConnected = solanaConnected || algorandConnected || aptosConnected
-  const currentAddress = solanaConnected ? solanaPublicKey?.toBase58() : aptosConnected ? aptosAddress : algorandConnected ? algorandAddress : null
+  const isAnyWalletConnected = solanaConnected || aptosConnected || evmConnected
+  const currentAddress = solanaConnected ? solanaPublicKey?.toBase58() : aptosConnected ? aptosAddress : evmConnected ? evmAddress : null
 
   // Balances (testnets only)
   const [solBalance, setSolBalance] = useState<number | null>(null)
-  const [algoBalance, setAlgoBalance] = useState<number | null>(null)
 
   useEffect(() => {
     let active = true
@@ -48,60 +47,89 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
     return () => { active = false }
   }, [solanaConnected, solanaPublicKey, connection])
 
-  useEffect(() => {
-    let active = true
-    async function loadAlgo() {
-      if (!algorandConnected || !algorandAddress) { setAlgoBalance(null); return }
-      try {
-        const res = await fetch(`https://testnet-api.algonode.cloud/v2/accounts/${algorandAddress}`)
-        if (!res.ok) throw new Error('algo balance')
-        const json = await res.json()
-        const micro = json.amount as number
-        if (!active) return
-        setAlgoBalance(micro / 1e6)
-      } catch { setAlgoBalance(null) }
-    }
-    loadAlgo()
-    return () => { active = false }
-  }, [algorandConnected, algorandAddress])
+  // No Algorand/Aptos in this build
 
   const handleConnect = () => {
     if (!isAnyWalletConnected) setShowSelectModal(true)
   }
 
   const connectViaSolana = async () => {
-    setShowSelectModal(false)
-    // Try direct connect to Phantom if adapter exists
-    const phantom = solanaWallets.find(w => w.adapter.name?.toLowerCase() === 'phantom')
-    if (phantom) {
-      try {
-        await selectSolanaWallet(phantom.adapter.name)
+    // No modal — connect directly
+    // Always select the Phantom adapter first so wallet-adapter-react has a wallet
+    try {
+      await selectSolanaWallet('Phantom' as WalletName)
+    } catch {}
+
+    // 1) Try adapter connect (should prompt if not previously approved)
+    try {
+      await connectSolana()
+      setShowDropdown(true)
+      return
+    } catch (e) {
+      // Fall through to provider connect
+    }
+
+    // 2) Ask Phantom provider explicitly (forces extension popup on first connect)
+    try {
+      const w: any = typeof window !== 'undefined' ? (window as any) : undefined
+      const provider = w?.phantom?.solana || w?.solana
+      if (provider?.connect) {
+        await provider.connect({ onlyIfTrusted: false })
+        // Sync adapter state after provider approval
+        try { await selectSolanaWallet('Phantom' as WalletName) } catch {}
         await connectSolana()
         setShowDropdown(true)
         return
-      } catch (e) {
-        // fall through to modal on failure/cancel
       }
+    } catch (e) {
+      // Continue to adapter-based connect below
     }
+    // 3) Retry adapter connect after provider prompt
+    try {
+      await selectSolanaWallet('Phantom' as WalletName)
+      await connectSolana()
+      setShowDropdown(true)
+      return
+    } catch {}
     // If Phantom isn't detected, help the user install it, then still show the modal
-    const hasPhantom = typeof window !== 'undefined' && (window as any).solana?.isPhantom
+    const w: any = typeof window !== 'undefined' ? (window as any) : undefined
+    const hasPhantom = !!(w?.solana?.isPhantom || w?.phantom?.solana)
     if (!hasPhantom) {
       try { window.open('https://phantom.app/download', '_blank', 'noopener,noreferrer') } catch {}
+      alert('Phantom Wallet not detected. Please install Phantom and reload.')
+      return
     }
-    // Fallback to the adapter UI modal
-    setSolanaModalVisible(true)
+    // 4) Last attempt via provider
+    try {
+      const provider = w?.phantom?.solana || w?.solana
+      if (provider?.connect) {
+        await provider.connect({ onlyIfTrusted: false })
+        await connectSolana()
+        setShowDropdown(true)
+        return
+      }
+    } catch {}
   }
 
-  const connectViaAlgorand = async () => {
-    setShowSelectModal(false)
-    await connectAlgorand()
-    setShowDropdown(true)
-  }
-
+  // Removed Algorand
   const connectViaAptos = async () => {
     setShowSelectModal(false)
-    await connectAptos()
-    setShowDropdown(true)
+    try {
+      await connectAptos()
+      setShowDropdown(true)
+    } catch (e: any) {
+      alert(`Aptos connect failed: ${e?.message || e}`)
+    }
+  }
+
+  const connectViaEvm = async () => {
+    setShowSelectModal(false)
+    try {
+      await connectEvm()
+      setShowDropdown(true)
+    } catch (e: any) {
+      alert(`EVM connect failed: ${e?.message || e}`)
+    }
   }
 
   const handleCopyAddress = async () => {
@@ -119,9 +147,10 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
     if (aptosConnected) {
       await disconnectAptos()
     }
-    if (algorandConnected) {
-      await disconnectAlgorand()
+    if (evmConnected) {
+      await disconnectEvm()
     }
+    // Multi-chain supported: Solana, Aptos, EVM
     setShowDropdown(false)
   }
 
@@ -139,13 +168,6 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
           <Wallet className="w-4 h-4 mr-2" />
           {isAnyWalletConnected ? 'Wallet Connected' : 'Connect Wallet'}
         </button>
-        <WalletSelectModal
-          open={showSelectModal}
-          onClose={() => setShowSelectModal(false)}
-          onConnectSolana={connectViaSolana}
-          onConnectAlgorand={connectViaAlgorand}
-          onConnectAptos={connectViaAptos}
-        />
       </>
     )
   }
@@ -164,8 +186,8 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
           open={showSelectModal}
           onClose={() => setShowSelectModal(false)}
           onConnectSolana={connectViaSolana}
-          onConnectAlgorand={connectViaAlgorand}
           onConnectAptos={connectViaAptos}
+          onConnectEvm={connectViaEvm}
         />
       </>
     )
@@ -179,11 +201,7 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
       >
         <Wallet className="w-4 h-4" />
         <span className="font-medium">{formatAddress(currentAddress!)}</span>
-        {aptosConnected && (
-          <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded">
-            {aptosBalance !== null ? `${aptosBalance.toFixed(2)} APT` : 'APT —'}
-          </span>
-        )}
+        
         <ChevronDown className={`w-4 h-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
       </button>
 
@@ -205,24 +223,13 @@ export default function WalletConnectButton({ mobile = false }: { mobile?: boole
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4 text-gray-500" />}
                 </button>
               </div>
-              {aptosConnected && (
-                <div className="mt-2 text-sm text-gray-700">
-                  Balance: <span className="font-semibold">{aptosBalance !== null ? aptosBalance.toFixed(4) : '—'} APT</span>
-                  <span className="text-xs text-gray-500"> (testnet)</span>
-                </div>
-              )}
               {solanaConnected && (
                 <div className="mt-2 text-sm text-gray-700">
                   Balance: <span className="font-semibold">{solBalance !== null ? solBalance.toFixed(4) : '—'} SOL</span>
-                  <span className="text-xs text-gray-500"> (devnet)</span>
-                </div>
-              )}
-              {algorandConnected && (
-                <div className="mt-2 text-sm text-gray-700">
-                  Balance: <span className="font-semibold">{algoBalance !== null ? algoBalance.toFixed(4) : '—'} ALGO</span>
                   <span className="text-xs text-gray-500"> (testnet)</span>
                 </div>
               )}
+              
             </div>
             <div className="p-2">
               <button
